@@ -37,6 +37,9 @@ header {
         background-color: rgba(255, 255, 255, 0.2);
     }
 }
+#change_color_button:active {
+    background-color: rgba(255, 255, 255, 0.2);
+}
 #change_color_button_next_color {
     width: 50%;
     height: 50%;
@@ -79,6 +82,9 @@ header {
     .github-button:hover {
         background-color: rgba(255, 255, 255, 0.2);
     }
+}
+.github-button:active {
+    background-color: rgba(255, 255, 255, 0.2);
 }
 
 .description-container {
