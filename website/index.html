@@ -41,15 +41,15 @@
 
         <div class="input-content">
             <div class="equation-container">
-        <p class="equation" id="equation-1">
-            \[
-            10^{3+}[Cr(N_{2}H_{4}CO)_{6}]_{4}[Cr(CN)_{6}]_{3}+1176KMnO_{4}+1399H_{2}SO_{4} \longrightarrow 35K_{2}Cr_{2}O_{7}+1176MnSO_{4}+420CO_{2}+660KNO_{3}+223K_{2}SO_{4}+1879H_{2}O
-            \]
-        </p>
-    </div>
-
+                <p class="equation" id="equation-1">
+                \[
+                10^{3+}[Cr(N_{2}H_{4}CO)_{6}]_{4}[Cr(CN)_{6}]_{3}+1176KMnO_{4}+1399H_{2}SO_{4} \longrightarrow 35K_{2}Cr_{2}O_{7}+1176MnSO_{4}+420CO_{2}+660KNO_{3}+223K_{2}SO_{4}+1879H_{2}O
+                \]
+                </p>
+            </div>
             <label for="input-equation"></label>
             <input type="text" id="input-equation" placeholder="Equation to balance">
+	        <button onclick="greet()">Click me</button>
         </div>
     </div>
 
@@ -69,6 +69,22 @@
     </div>
 
     <p class="info">2023 &copy Antonio Mamić</p>
+
+
+    <!-- Note the usage of `type=module` here as this is an ES6 module -->
+    <script type="module">
+      // Use ES module import syntax to import functionality from the module
+      // that we have compiled.
+      //
+      // Note that the `default` import is an initialization function which
+      // will "boot" the module and make it ready to use. Currently, browsers
+      // don't support natively imported WebAssembly as an ES module, but
+      // eventually the manual initialization won't be required!
+      import init, { greet } from './wasm/stoichio/stoichio.js';
+
+	  await init();
+	  window.greet = greet;
+    </script>
 
     <script type="text/javascript" src="js/change_color.js"></script>
 </body>
