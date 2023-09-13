@@ -32,8 +32,10 @@ header {
     transition-duration: 0.1s;
     border-radius: 10%;
 }
-#change_color_button:hover {
-    background-color: rgba(255, 255, 255, 0.2);
+@media(hover: hover) and (pointer: fine) {
+    #change_color_button:hover {
+        background-color: rgba(255, 255, 255, 0.2);
+    }
 }
 #change_color_button_next_color {
     width: 50%;
@@ -73,8 +75,10 @@ header {
     font-family: monospace;
     font-size: max(12px, 2vh);
 }
-.github-button:hover {
-    background-color: rgba(255, 255, 255, 0.2);
+@media(hover: hover) and (pointer: fine) {
+    .github-button:hover {
+        background-color: rgba(255, 255, 255, 0.2);
+    }
 }
 
 .description-container {
