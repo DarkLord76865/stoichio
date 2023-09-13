@@ -10,19 +10,12 @@ use std::iter::zip;
 use std::mem;
 
 
-#[test]
-fn main2() {
-    //let mut equ = Equation::from_latex(r"[Cr(N_{2}H_{4}CO)_{6}]_{4}[Cr(CN)_{6}]_{3}+KMnO_{4}+H_{2}SO_{4} \longrightarrow K_{2}Cr_{2}O_{7}+MnSO_{4}+CO_{2}+KNO_{3}+K_{2}SO_{4}+H_{2}O").unwrap();
-    let mut equ = Equation::from_latex(r"K \longrightarrow K^+").unwrap();
-    equ.solve().unwrap();
-    println!("{}", equ.solution_str().unwrap());
-}
 
 
 
 /// Errors that can occur during solving system of linear equations
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
-pub enum Errors {
+pub enum StoichioError {
     /// Entered equation is invalid
     InvalidEquation,
     /// Solution was calculated, but is invalid
@@ -35,18 +28,18 @@ pub enum Errors {
     /// There is no solution to the system of linear equations
     NoSystemSolution,
 }
-impl Display for Errors {
+impl Display for StoichioError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Errors::WrongMatrixDimensions => write!(f, "Wrong matrix dimensions"),
-            Errors::NoSystemSolution => write!(f, "No solution"),
-            Errors::InvalidElement => write!(f, "Invalid element"),
-            Errors::InvalidEquation => write!(f, "Invalid equation"),
-            Errors::InvalidSolution => write!(f, "Invalid solution"),
+            StoichioError::WrongMatrixDimensions => write!(f, "Wrong matrix dimensions"),
+            StoichioError::NoSystemSolution => write!(f, "No solution"),
+            StoichioError::InvalidElement => write!(f, "Invalid element"),
+            StoichioError::InvalidEquation => write!(f, "Invalid equation"),
+            StoichioError::InvalidSolution => write!(f, "Invalid solution"),
         }
     }
 }
-impl Error for Errors {}
+impl Error for StoichioError {}
 
 
 
@@ -67,9 +60,32 @@ pub struct Equation {
     solutions_products: Option<Vec<i64>>,
 }
 impl Equation {
-    pub fn from_latex(input: &str) -> Result<Self, Errors> {
+    /// Create new equation from LaTeX string
+    /// # Arguments
+    /// * `input` - LaTeX string
+    /// # Returns
+    /// * `Ok` - equation
+    /// * `Err` - error that occurred during parsing
+    /// # Example
+    /// ```
+    /// use stoichio::{Compound, Equation};
+    ///
+    /// let equation_str = r"H_{2} + O_{2} \longrightarrow H_{2}O";
+    /// let equation = Equation::from_latex(equation_str).unwrap();
+    ///
+    /// let expected_reactants = vec![
+    ///     Compound::from_latex("H_{2}").unwrap(),
+    ///     Compound::from_latex("O_{2}").unwrap(),
+    /// ];
+    /// let expected_products = vec![Compound::from_latex("H_{2}O").unwrap()];
+    ///
+    /// assert_eq!(equation.original_str(), equation_str);
+    /// assert_eq!(equation.reactants(), &expected_reactants);
+    /// assert_eq!(equation.products(), &expected_products);
+    /// ```
+    pub fn from_latex(input: &str) -> Result<Self, StoichioError> {
         let original_str = input;
-        if input.split(r"\longrightarrow").count() != 2 { return Err(Errors::InvalidEquation); }
+        if input.split(r"\longrightarrow").count() != 2 { return Err(StoichioError::InvalidEquation); }
         let reactants_str = input.split(r"\longrightarrow").next().unwrap();
         let products_str = input.split(r"\longrightarrow").last().unwrap();
 
@@ -102,7 +118,7 @@ impl Equation {
             string
         };
 
-        let process_side = |string: &str| -> Result<Vec<Compound>, Errors> {
+        let process_side = |string: &str| -> Result<Vec<Compound>, StoichioError> {
             let mut compounds = Vec::new();
 
             let mut plus_locs = Vec::new();
@@ -153,7 +169,7 @@ impl Equation {
     /// # Returns
     /// * `Ok` - if the equation was solved successfully
     /// * `Err` - if the equation was not solved successfully
-    pub fn solve(&mut self) -> Result<(), Errors> {
+    pub fn solve(&mut self) -> Result<(), StoichioError> {
         // get all the elements used in the equation (each element corresponds to one equation) (number of rows)
         let mut elements = HashSet::new();
         for compound in self.reactants.iter().chain(self.products.iter()) {
@@ -196,7 +212,7 @@ impl Equation {
         }
 
         let solutions = solve_equations(&matrix)?;
-        if solutions.iter().any(|x| *x <= 0) { return Err(Errors::InvalidSolution); }
+        if solutions.iter().any(|x| *x <= 0) { return Err(StoichioError::InvalidSolution); }
 
         let (reactants_solutions, products_solutions) = solutions.split_at(self.reactants.len());
         let mut reactants_solutions = reactants_solutions.to_vec();
@@ -219,7 +235,7 @@ impl Equation {
             }
             products_electrons += self.products[i].electrons() * coeff;
         }
-        if reactants_element_counts != products_element_counts { return Err(Errors::InvalidSolution); }
+        if reactants_element_counts != products_element_counts { return Err(StoichioError::InvalidSolution); }
 
         // check if electrons are balanced
         match reactants_electrons.cmp(&products_electrons) {
@@ -420,7 +436,7 @@ impl Compound {
     /// assert_eq!(compound.electron_offset(), 0);
     /// assert_eq!(compound.original_str(), compound_str);
     /// ```
-    pub fn from_latex(input: &str) -> Result<Self, Errors> {
+    pub fn from_latex(input: &str) -> Result<Self, StoichioError> {
         let original_str = input.to_string();
         let input = input.replace('[', "(");
         let input = input.replace(']', ")");
@@ -428,7 +444,7 @@ impl Compound {
         if (input.chars().filter(|&c| c == '{').count() != input.chars().filter(|&c| c == '}').count()) ||
             (input.chars().filter(|&c| c == '(').count() != input.chars().filter(|&c| c == ')').count()) {
 
-            return Err(Errors::InvalidEquation);
+            return Err(StoichioError::InvalidEquation);
         }
 
         #[derive(Copy, Clone, Debug)]
@@ -460,18 +476,18 @@ impl Compound {
                         Some(next_letter) => {
                             if next_letter.is_ascii_lowercase() {
                                 let pattern = format!("{}{}", letters[0], next_letter);
-                                tokens.push(Token::Element(*ALL_ELEMENTS.iter().find(|e| e.symbol() == pattern).ok_or(Errors::InvalidElement)?));
+                                tokens.push(Token::Element(*ALL_ELEMENTS.iter().find(|e| e.symbol() == pattern).ok_or(StoichioError::InvalidElement)?));
                                 letters.remove(0);
                                 letters.remove(0);
                             } else {
                                 let pattern = letters[0].to_string();
-                                tokens.push(Token::Element(*ALL_ELEMENTS.iter().find(|e| e.symbol() == pattern).ok_or(Errors::InvalidElement)?));
+                                tokens.push(Token::Element(*ALL_ELEMENTS.iter().find(|e| e.symbol() == pattern).ok_or(StoichioError::InvalidElement)?));
                                 letters.remove(0);
                             }
                         },
                         None => {
                             let pattern = letters[0].to_string();
-                            tokens.push(Token::Element(*ALL_ELEMENTS.iter().find(|e| e.symbol() == pattern).ok_or(Errors::InvalidEquation)?));
+                            tokens.push(Token::Element(*ALL_ELEMENTS.iter().find(|e| e.symbol() == pattern).ok_or(StoichioError::InvalidEquation)?));
                             letters.remove(0);
                         },
                     }
@@ -490,18 +506,18 @@ impl Compound {
                                 Ok(num) => tokens.push(Token::Number(num)),
                                 Err(_) => {
                                     if !quantity.ends_with('+') && !quantity.ends_with('-') {
-                                        return Err(Errors::InvalidEquation);
+                                        return Err(StoichioError::InvalidEquation);
                                     }
                                     if quantity.chars().count() == 1 {
                                         quantity.insert(0, '1');
                                     }
                                     let last_char = quantity.pop().unwrap();
                                     quantity.insert(0, last_char);
-                                    tokens.push(Token::Number(quantity.parse::<i64>().map_err(|_| Errors::InvalidEquation)?));
+                                    tokens.push(Token::Number(quantity.parse::<i64>().map_err(|_| StoichioError::InvalidEquation)?));
                                 },
                             }
                         },
-                        None => return Err(Errors::InvalidEquation),
+                        None => return Err(StoichioError::InvalidEquation),
                     }
                 },
                 '^' => {
@@ -524,7 +540,7 @@ impl Compound {
                     tokens.push(Token::Number(letters[0].to_digit(10).unwrap() as i64));
                     letters.remove(0);
                 }
-                _ => return Err(Errors::InvalidEquation),
+                _ => return Err(StoichioError::InvalidEquation),
             }
         }
 
@@ -536,7 +552,7 @@ impl Compound {
                     tokens.remove(pos);
                     tokens.insert(pos, Token::Electrons(num));
                 },
-                Some(_) | None => return Err(Errors::InvalidEquation),
+                Some(_) | None => return Err(StoichioError::InvalidEquation),
             }
         }
 
@@ -548,7 +564,7 @@ impl Compound {
                     tokens.remove(pos);
                     tokens.insert(pos, Token::Quantity(num));
                 },
-                Some(_) | None => return Err(Errors::InvalidEquation),
+                Some(_) | None => return Err(StoichioError::InvalidEquation),
             }
         }
 
@@ -559,7 +575,7 @@ impl Compound {
                 Token::Electrons(_) => {},
                 Token::OpenParentheses => {},
                 Token::CloseParentheses => {},
-                _ => return Err(Errors::InvalidEquation),
+                _ => return Err(StoichioError::InvalidEquation),
             }
         }
 
@@ -604,7 +620,7 @@ impl Compound {
             match tokens[i - deleted] {
                 Token::OpenParentheses => parentheses_stack.push(i - deleted),
                 Token::CloseParentheses => {
-                    let open_parentheses_pos = parentheses_stack.pop().ok_or(Errors::InvalidEquation)?;
+                    let open_parentheses_pos = parentheses_stack.pop().ok_or(StoichioError::InvalidEquation)?;
                     let next_token = tokens.get(i - deleted + 1).copied();
                     match next_token {
                         Some(Token::Quantity(num)) => {
@@ -641,14 +657,14 @@ impl Compound {
             }
         }
 
-        if !parentheses_stack.is_empty() { return Err(Errors::InvalidEquation); }
+        if !parentheses_stack.is_empty() { return Err(StoichioError::InvalidEquation); }
 
         for token in &tokens {
             match token {
                 Token::Element(_) => {},
                 Token::Quantity(_) => {},
                 Token::Electrons(_) => {},
-                _ => return Err(Errors::InvalidEquation),
+                _ => return Err(StoichioError::InvalidEquation),
             }
         }
 
@@ -679,13 +695,13 @@ impl Compound {
                         skip = 1;
                     },
                     Some(Token::Element(_)) => {},
-                    Some(_) => return Err(Errors::InvalidEquation),
+                    Some(_) => return Err(StoichioError::InvalidEquation),
                     None => {
                         *elements.entry(e).or_insert(0) += 1;
                     },
                 }
             } else {
-                return Err(Errors::InvalidEquation);
+                return Err(StoichioError::InvalidEquation);
             }
         }
 
@@ -804,22 +820,22 @@ impl Compound {
 /// let solutions = solve_equations(&matrix).unwrap();
 /// assert_eq!(solutions, vec![2, 3, -1]);
 /// ```
-pub fn solve_equations(matrix: &Vec<Vec<i64>>) -> Result<Vec<i64>, Errors> {
+pub fn solve_equations(matrix: &Vec<Vec<i64>>) -> Result<Vec<i64>, StoichioError> {
     // compute dimensions (m x n)
     // m - number of rows
     // n - number of columns
     let mut m = matrix.len();  // rows
-    if m == 0 { return Err(Errors::WrongMatrixDimensions); }
+    if m == 0 { return Err(StoichioError::WrongMatrixDimensions); }
 
     let mut n = matrix[0].len();  // cols
-    if n <= 1 { return Err(Errors::WrongMatrixDimensions); }
+    if n <= 1 { return Err(StoichioError::WrongMatrixDimensions); }
     for row in matrix.iter().skip(1) {
-        if row.len() != n { return Err(Errors::WrongMatrixDimensions); }  // loop through other rows and check if they have the same number of columns as the first one
+        if row.len() != n { return Err(StoichioError::WrongMatrixDimensions); }  // loop through other rows and check if they have the same number of columns as the first one
     }
     n -= 1;  // last column is used only to store solutions so we don't count it as a column
 
     // if there are more columns than rows, then there are more unknowns than equations, therefore there is no solution
-    if m < n { return Err(Errors::NoSystemSolution); }
+    if m < n { return Err(StoichioError::NoSystemSolution); }
 
     // if there are more rows than columns, then there are more equations than unknowns which usually means that the system is overdetermined and there is no solution
     // but that we will check later
@@ -841,7 +857,7 @@ pub fn solve_equations(matrix: &Vec<Vec<i64>>) -> Result<Vec<i64>, Errors> {
     // there is no solution if there is a column of zeros in the matrix
     for column in 0..n {
         if matrix.iter().all(|row| row[column] == Rational::ZERO) {
-            return Err(Errors::NoSystemSolution);
+            return Err(StoichioError::NoSystemSolution);
         }
     }
 
@@ -849,7 +865,7 @@ pub fn solve_equations(matrix: &Vec<Vec<i64>>) -> Result<Vec<i64>, Errors> {
     // any row after the n rows must contain only zeros (because of gaussian elimination)
     // if there are rows in which all coefficients are zero, but the solution is not zero, then there is no solution
     while m > n {
-        if matrix[m - 1].iter().any(|x| x != &Rational::ZERO) { return Err(Errors::NoSystemSolution); }
+        if matrix[m - 1].iter().any(|x| x != &Rational::ZERO) { return Err(StoichioError::NoSystemSolution); }
         m -= 1;
         matrix.pop();
     }
@@ -1003,5 +1019,270 @@ pub fn reduce_row_echelon(matrix: &mut [Vec<Rational>], n: usize) {
         let factor = Rational::ONE / &row[i];
         row[i] = Rational::ONE;
         row[n] *= factor;
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn test_equation(equation: &str, solved_equation: &str) {
+        let mut eq = Equation::from_latex(equation).unwrap();
+        eq.solve().unwrap();
+        let solution = eq.solution_str().unwrap();
+
+        assert_eq!(solution, solved_equation);
+    }
+
+
+    #[test]
+    fn eq1() {
+        test_equation(r"H_{2} + O_{2} \longrightarrow H_{2}O", r"2H_{2} + O_{2} \longrightarrow 2H_{2}O");
+    }
+
+    #[test]
+    fn eq2() {
+        test_equation(r"K \longrightarrow K^+", r"K \longrightarrow K^+ + e^{-}");
+    }
+
+    #[test]
+    fn eq3() {
+        test_equation(r"[Cr(N_{2}H_{4}CO)_{6}]_{4}[Cr(CN)_{6}]_{3}+KMnO_{4}+H_{2}SO_{4} \longrightarrow K_{2}Cr_{2}O_{7}+MnSO_{4}+CO_{2}+KNO_{3}+K_{2}SO_{4}+H_{2}O", r"10[Cr(N_{2}H_{4}CO)_{6}]_{4}[Cr(CN)_{6}]_{3} + 1176KMnO_{4} + 1399H_{2}SO_{4} \longrightarrow 35K_{2}Cr_{2}O_{7} + 1176MnSO_{4} + 420CO_{2} + 660KNO_{3} + 223K_{2}SO_{4} + 1879H_{2}O");
+    }
+
+    #[test]
+    fn eq4() {
+        test_equation(r"P_4O_{10} + H_2O \longrightarrow H_3PO_4", r"P_4O_{10} + 6H_2O \longrightarrow 4H_3PO_4");
+    }
+
+    #[test]
+    fn eq5() {
+        test_equation(r"P_4O_{10} + H_2O \longrightarrow H_3PO_4", r"P_4O_{10} + 6H_2O \longrightarrow 4H_3PO_4");
+    }
+
+    #[test]
+    fn eq6() {
+        test_equation(r"CO_2 + H_2O \longrightarrow C_6H_{12}O_6 + O_2", r"6CO_2 + 6H_2O \longrightarrow C_6H_{12}O_6 + 6O_2");
+    }
+
+    #[test]
+    fn eq7() {
+        test_equation(r"SiCl_4 + H_2O \longrightarrow H_4SiO_4 + HCl", r"SiCl_4 + 4H_2O \longrightarrow H_4SiO_4 + 4HCl");
+    }
+
+    #[test]
+    fn eq8() {
+        test_equation(r"Al + HCl \longrightarrow AlCl_3 + H_2", r"2Al + 6HCl \longrightarrow 2AlCl_3 + 3H_2");
+    }
+
+    #[test]
+    fn eq9() {
+        test_equation(r"Na_2CO_3 + HCl \longrightarrow NaCl + H_2O + CO_2", r"Na_2CO_3 + 2HCl \longrightarrow 2NaCl + H_2O + CO_2");
+    }
+
+    #[test]
+    fn eq10() {
+        test_equation(r"C_7H_6O_2 + O_2 \longrightarrow CO_2 + H_2O", r"2C_7H_6O_2 + 15O_2 \longrightarrow 14CO_2 + 6H_2O");
+    }
+
+    #[test]
+    fn eq11() {
+        test_equation(r"Fe_2(SO_4)_3 + KOH \longrightarrow K_2SO_4 + Fe(OH)_3", r"Fe_2(SO_4)_3 + 6KOH \longrightarrow 3K_2SO_4 + 2Fe(OH)_3");
+    }
+
+    #[test]
+    fn eq12() {
+        test_equation(r"Ca_3(PO_4)_2 + SiO_2 \longrightarrow P_4O_{10} + 3CaSiO_3", r"2Ca_3(PO_4)_2 + 6SiO_2 \longrightarrow P_4O_{10} + 6CaSiO_3");
+    }
+
+    #[test]
+    fn eq13() {
+        test_equation(r"KClO_3 \longrightarrow KClO_4 + KCl", r"4KClO_3 \longrightarrow 3KClO_4 + KCl");
+    }
+
+    #[test]
+    fn eq14() {
+        test_equation(r"Al_2(SO_4)_3 + Ca(OH)_2 \longrightarrow Al(OH)_3 + CaSO_4", r"Al_2(SO_4)_3 + 3Ca(OH)_2 \longrightarrow 2Al(OH)_3 + 3CaSO_4");
+    }
+
+    #[test]
+    fn eq15() {
+        test_equation(r"H_2SO_4 + HI \longrightarrow H_2S + I_2 + H_2O", r"H_2SO_4 + 8HI \longrightarrow H_2S + 4I_2 + 4H_2O");
+    }
+
+    #[test]
+    fn eq16() {
+        test_equation(r"C_2H_6 + O_2 \longrightarrow CO_2 + H_2O", r"2C_2H_6 + 7O_2 \longrightarrow 4CO_2 + 6H_2O");
+    }
+
+    #[test]
+    fn eq17() {
+        test_equation(r"NaN_3 \longrightarrow Na + N_2", r"2NaN_3 \longrightarrow 2Na + 3N_2");
+    }
+
+    #[test]
+    fn eq18() {
+        test_equation(r"Na + Fe_2O_3 \longrightarrow Na_2O + Fe", r"6Na + Fe_2O_3 \longrightarrow 3Na_2O + 2Fe");
+    }
+
+    #[test]
+    fn eq19() {
+        test_equation(r"Mg + N_2 \longrightarrow Mg_3N_2", r"3Mg + N_2 \longrightarrow Mg_3N_2");
+    }
+
+    #[test]
+    fn eq20() {
+        test_equation(r"Na + NH_3 \longrightarrow NaNH_2 + H_2", r"2Na + 2NH_3 \longrightarrow 2NaNH_2 + H_2");
+    }
+
+    #[test]
+    fn eq21() {
+        test_equation(r"Na_2O + CO_2 + H_2O \longrightarrow NaHCO_3", r"Na_2O + 2CO_2 + H_2O \longrightarrow 2NaHCO_3");
+    }
+
+    #[test]
+    fn eq22() {
+        test_equation(r"P_4S_3 + O_2 \longrightarrow P_4O_6 + SO_2", r"P_4S_3 + 6O_2 \longrightarrow P_4O_6 + 3SO_2");
+    }
+
+    #[test]
+    fn eq23() {
+        test_equation(r"Na_3PO_4 + CaCl_2 \longrightarrow Ca_3(PO_4)_2 + NaCl", r"2Na_3PO_4 + 3CaCl_2 \longrightarrow Ca_3(PO_4)_2 + 6NaCl");
+    }
+
+    #[test]
+    fn eq24() {
+        test_equation(r"C_8H_{18} + O_2 \longrightarrow CO_2 + H_2O", r"2C_8H_{18} + 25O_2 \longrightarrow 16CO_2 + 18H_2O");
+    }
+
+    #[test]
+    fn eq25() {
+        test_equation(r"C_2H_6O + O_2 \longrightarrow CO_2 + H_2O", r"C_2H_6O + 3O_2 \longrightarrow 2CO_2 + 3H_2O");
+    }
+
+    #[test]
+    fn eq26() {
+        test_equation(r"Pb(NO_3)_2 + KI \longrightarrow PbI_2 + KNO_3", r"Pb(NO_3)_2 + 2KI \longrightarrow PbI_2 + 2KNO_3");
+    }
+
+    #[test]
+    fn eq27() {
+        test_equation(r"N_2O_5 \longrightarrow NO_2 + O_2", r"2N_2O_5 \longrightarrow 4NO_2 + O_2");
+    }
+
+    #[test]
+    fn eq28() {
+        test_equation(r"KClO_3 \longrightarrow KCl + O_2", r"2KClO_3 \longrightarrow 2KCl + 3O_2");
+    }
+
+    #[test]
+    fn eq29() {
+        test_equation(r"CO + O_2 \longrightarrow CO_2", r"2CO + O_2 \longrightarrow 2CO_2");
+    }
+
+    #[test]
+    fn eq30() {
+        test_equation(r"C_{57}H_{110}O_6 + O_2 \longrightarrow CO_2 + H_2O", r"2C_{57}H_{110}O_6 + 163O_2 \longrightarrow 114CO_2 + 110H_2O");
+    }
+
+    #[test]
+    fn eq31() {
+        test_equation(r"K_4[Fe(SCN)_6] + K_2Cr_2O_7 + H_2SO_4 \longrightarrow Fe_2(SO_4)_3 + Cr_2(SO_4)_3 + CO_2 + H_2O + K_2SO_4 + KNO_3", r"6K_4[Fe(SCN)_6] + 97K_2Cr_2O_7 + 355H_2SO_4 \longrightarrow 3Fe_2(SO_4)_3 + 97Cr_2(SO_4)_3 + 36CO_2 + 355H_2O + 91K_2SO_4 + 36KNO_3");
+    }
+
+    #[test]
+    fn eq32() {
+        test_equation(r"Al + H_2SO_4 \longrightarrow Al_2(SO_4)_3 + H_2", r"2Al + 3H_2SO_4 \longrightarrow Al_2(SO_4)_3 + 3H_2");
+    }
+
+    #[test]
+    fn eq33() {
+        test_equation(r"C_7H_{10}N + O_2 \longrightarrow CO_2 + H_2O + NO_2", r"2C_7H_{10}N + 21O_2 \longrightarrow 14CO_2 + 10H_2O + 2NO_2");
+    }
+
+    #[test]
+    fn eq34() {
+        test_equation(r"Al(OH)_3 + H_2SO_4 \longrightarrow Al_2(SO_4)_3 + H_2O", r"2Al(OH)_3 + 3H_2SO_4 \longrightarrow Al_2(SO_4)_3 + 6H_2O");
+    }
+
+    #[test]
+    fn eq35() {
+        test_equation(r"BaO + Al \longrightarrow BaAl_4 + Al_2O_3", r"3BaO + 14Al \longrightarrow 3BaAl_4 + Al_2O_3");
+    }
+
+    #[test]
+    fn eq36() {
+        test_equation(r"AgN_3 \longrightarrow N_2 + Ag", r"2AgN_3 \longrightarrow 3N_2 + 2Ag");
+    }
+
+    #[test]
+    fn eq37() {
+        test_equation(r"Pt + HNO_3 + HCl \longrightarrow H_2PtCl_6 + NO_2 + H_2O", r"Pt + 4HNO_3 + 6HCl \longrightarrow H_2PtCl_6 + 4NO_2 + 4H_2O");
+    }
+
+    #[test]
+    fn eq38() {
+        test_equation(r"LuCl_3 + Ca \longrightarrow Lu + CaCl_2", r"2LuCl_3 + 3Ca \longrightarrow 2Lu + 3CaCl_2");
+    }
+
+    #[test]
+    fn eq39() {
+        test_equation(r"XeF_6 + H_2O \longrightarrow XeO_3 + HF", r"XeF_6 + 3H_2O \longrightarrow XeO_3 + 6HF");
+    }
+
+    #[test]
+    fn eq40() {
+        test_equation(r"Ba_2XeO_6 + H_2SO_4 \longrightarrow BaSO_4 + H_2O + XeO_4", r"Ba_2XeO_6 + 2H_2SO_4 \longrightarrow 2BaSO_4 + 2H_2O + XeO_4");
+    }
+
+    #[test]
+    fn eq41() {
+        test_equation(r"P_4O_6 + H_2O \longrightarrow H_3PO_3", r"P_4O_6 + 6H_2O \longrightarrow 4H_3PO_3");
+    }
+
+    #[test]
+    fn eq42() {
+        test_equation(r"C_6H_{14} + O_2 \longrightarrow CO_2 + H_2O", r"2C_6H_{14} + 19O_2 \longrightarrow 12CO_2 + 14H_2O");
+    }
+
+    #[test]
+    fn eq43() {
+        test_equation(r"MoS_2 + O_2 \longrightarrow MoO_3 + SO_2", r"2MoS_2 + 7O_2 \longrightarrow 2MoO_3 + 4SO_2");
+    }
+
+    #[test]
+    fn eq44() {
+        test_equation(r"K_2MnF_6 + SbF_5 \longrightarrow KSbF_6 + MnF_3 + F_2", r"2K_2MnF_6 + 4SbF_5 \longrightarrow 4KSbF_6 + 2MnF_3 + F_2");
+    }
+
+    #[test]
+    fn eq45() {
+        test_equation(r"S + HNO_3 \longrightarrow H_2SO_4 + NO_2 + H_2O", r"S + 6HNO_3 \longrightarrow H_2SO_4 + 6NO_2 + 2H_2O");
+    }
+
+    #[test]
+    fn eq46() {
+        test_equation(r"Cu + HNO_3 \longrightarrow Cu(NO_3)_2 + NO + H_2O", r"3Cu + 8HNO_3 \longrightarrow 3Cu(NO_3)_2 + 2NO + 4H_2O");
+    }
+
+    #[test]
+    fn eq47() {
+        test_equation(r"CuS + HNO_3 \longrightarrow CuSO_4 + NO_2 + H_2O", r"CuS + 8HNO_3 \longrightarrow CuSO_4 + 8NO_2 + 4H_2O");
+    }
+
+    #[test]
+    fn eq48() {
+        test_equation(r"Cu_2S + HNO_3 \longrightarrow Cu(NO_3)_2 + CuSO_4 + NO_2 + H_2O", r"Cu_2S + 12HNO_3 \longrightarrow Cu(NO_3)_2 + CuSO_4 + 10NO_2 + 6H_2O");
+    }
+
+    #[test]
+    fn eq49() {
+        test_equation(r"NaBr + NaBrO_3 + H_2SO_4 \longrightarrow Br_2 + Na_2SO_4 + H_2O", r"5NaBr + NaBrO_3 + 3H_2SO_4 \longrightarrow 3Br_2 + 3Na_2SO_4 + 3H_2O");
+    }
+
+    #[test]
+    fn eq50() {
+        test_equation(r"KNO_3 + C_{12}H_{22}O_{11} \longrightarrow N_2 + CO_2 + H_2O + K_2CO_3", r"48KNO_3 + 5C_{12}H_{22}O_{11} \longrightarrow 24N_2 + 36CO_2 + 55H_2O + 24K_2CO_3");
     }
 }

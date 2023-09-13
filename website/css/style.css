@@ -1,0 +1,200 @@
+body {
+    margin: 0;
+    padding: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: #f2f8ff;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+header {
+    margin: 0;
+    padding: 0;
+    width: 100vw;
+    flex: 0 0 max(50px, 8vh);
+    background-color: #007aff;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+}
+
+#change_color_button {
+    height: 100%;
+    flex: 0 0 max(50px, 8vh);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(255, 255, 255, 0);
+    cursor: pointer;
+    transition-property: background-color;
+    transition-duration: 0.1s;
+    border-radius: 10%;
+}
+#change_color_button:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+#change_color_button_next_color {
+    width: 50%;
+    height: 50%;
+    box-sizing: border-box;
+    border: 2px solid white;
+    background-color: #7a00ff;
+    border-radius: 25%;
+}
+
+.title {
+    margin: 0;
+    padding: 0;
+    flex: 1;
+    text-align: center;
+    color: #ffffff;
+    font-family: cursive;
+    font-size: max(30px, 5vh);
+}
+
+.github-button-anchor {
+    height: 100%;
+    flex: 0 0 max(50px, 8vh);
+    border: 0;
+    border-radius: 10%;
+}
+.github-button {
+    height: 100%;
+    width: 100%;
+    border: 0;
+    border-radius: 10%;
+    color: #ffffff;
+    background-color: rgba(255, 255, 255, 0);
+    transition-property: background-color;
+    transition-duration: 0.1s;
+    cursor: pointer;
+    font-family: monospace;
+    font-size: max(12px, 2vh);
+}
+.github-button:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.description-container {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    flex: 0 0 max(32px, 4.45vh);
+    display: flex;
+    align-items: center;
+}
+.description {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    text-align: center;
+    color: #000000;
+    font-family: cursive;
+    font-size: max(13px, 2.15vh);
+    white-space: nowrap;
+}
+
+.horizontal-line {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    flex: 0 0 1px;
+    border: 0;
+    background-color: rgba(100, 100, 100, 0.1);
+}
+
+.input {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    flex: 3 0 150px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    overflow: hidden;
+}
+
+.vertical-line {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    flex: 0 0 1px;
+    border: 0;
+    background-color: rgba(100, 100, 100, 0.1);
+}
+
+.io_label {
+    margin: 0;
+    padding: 0;
+    flex: 0 0 max(55px, 9vh);
+    text-align: center;
+    color: #000000;
+    font-family: cursive;
+    font-size: max(13px, 2.15vh);
+    white-space: nowrap;
+}
+
+.input-content {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow: hidden;
+}
+
+#input-equation {
+    margin: 0;
+    padding: 0;
+    width: 90%;
+    flex: 2.75 0 50px;
+}
+
+.output {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    flex: 1 0 50px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    overflow: hidden;
+}
+
+.MathJax {
+    font-size: max(13px, 2.15vh) !important;
+}
+.equation-container {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    flex: 1 0 50px;
+    display: flex;
+    align-items: center;
+}
+.equation {
+    margin: 0 5px 0 5px;
+    padding: 0;
+    width: 100%;
+    text-align: center;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+}
+
+.info {
+    margin: 0;
+    padding: 0;
+    width: 100vw;
+    flex: 0 0 max(14px, 2.3vh);
+    text-align: center;
+    color: rgb(75, 75, 75);
+    background-color: rgba(100, 100, 100, 0.1);
+    font-family: cursive;
+    font-size: max(10px, 1.7vh);
+    white-space: nowrap;
+}

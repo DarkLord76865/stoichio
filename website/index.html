@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+
+    <title>Stoichio</title>
+    <link rel="icon" href="images/favicon.png" type="image/png">
+
+    <meta name="keywords" content="balance, chemistry, equations, stoichiometry">
+    <meta name="description" content="Balance chemical equations">
+    <meta name="author" content="Antonio Mamić">
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0">
+
+    <link rel="stylesheet" type="text/css" href="css/style.css">
+    <script type="text/javascript" id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
+    </script>
+</head>
+<body id="body_id">
+    <header id="header_id">
+        <div id="change_color_button">
+            <div id="change_color_button_next_color"></div>
+        </div>
+
+        <h1 class="title">Stoichio</h1>
+
+        <a href="https://www.google.com/" class="github-button-anchor">
+            <button class="github-button">GitHub</button>
+        </a>
+    </header>
+
+    <div class="description-container">
+        <p class="description">Balance chemical equations</p>
+    </div>
+
+    <hr class="horizontal-line">
+
+    <div class="input">
+        <p class="io_label">Input:</p>
+        <div class="vertical-line"></div>
+
+        <div class="input-content">
+            <div class="equation-container">
+        <p class="equation" id="equation-1">
+            \[
+            10^{3+}[Cr(N_{2}H_{4}CO)_{6}]_{4}[Cr(CN)_{6}]_{3}+1176KMnO_{4}+1399H_{2}SO_{4} \longrightarrow 35K_{2}Cr_{2}O_{7}+1176MnSO_{4}+420CO_{2}+660KNO_{3}+223K_{2}SO_{4}+1879H_{2}O
+            \]
+        </p>
+    </div>
+
+            <label for="input-equation"></label>
+            <input type="text" id="input-equation" placeholder="Equation to balance">
+        </div>
+    </div>
+
+    <hr class="horizontal-line">
+
+    <div class="output">
+        <p class="io_label">Output:</p>
+        <div class="vertical-line"></div>
+
+        <div class="equation-container">
+            <div class="equation" id="equation-2">
+                \[
+                10[Cr(N_{2}H_{4}CO)_{6}]_{4}[Cr(CN)_{6}]_{3}+1176KMnO_{4}+1399H_{2}SO_{4} \longrightarrow 35K_{2}Cr_{2}O_{7}+1176MnSO_{4}+420CO_{2}+660KNO_{3}+223K_{2}SO_{4}+1879H_{2}O
+                \]
+            </div>
+        </div>
+    </div>
+
+    <p class="info">2023 &copy Antonio Mamić</p>
+
+    <script type="text/javascript" src="js/change_color.js"></script>
+</body>
+</html>
