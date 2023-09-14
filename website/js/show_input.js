@@ -6,6 +6,6 @@ input.addEventListener('input', function() {
     if (text_value === "") {
         text_value = "-";
     }
-    equation.textContent = "\\[" + text_value + "\\]";
-    MathJax.typeset();
+    equation.textContent = "$$" + text_value + "$$";
+    MathJax.typeset([equation]);
 });
