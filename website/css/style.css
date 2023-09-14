@@ -95,7 +95,7 @@ header {
     display: flex;
     align-items: center;
 }
-.description {
+#description {
     margin: 0;
     padding: 0;
     width: 100%;
@@ -184,9 +184,6 @@ header {
 }
 #input-equation:focus {
     outline: none;
-    box-shadow:
-        0 0 10px 0 rgba(0, 0, 0, 0.75),
-        inset 0 0 10px 0 rgba(0, 0, 0, 0.3);
 }
 #balance-button {
     margin: 0;
@@ -203,14 +200,6 @@ header {
     box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.5);
     transition-property: box-shadow;
     transition-duration: 0.1s;
-}
-@media(hover: hover) and (pointer: fine) {
-    #balance-button:hover {
-        box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.9);
-    }
-}
-#balance-button:active {
-    box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.9);
 }
 
 .input-buttons {
