@@ -3,6 +3,8 @@ const change_color_button = document.getElementById("change_color_button");
 const change_color_button_next_color = document.getElementById("change_color_button_next_color");
 const header = document.getElementById("header_id");
 const body = document.getElementById("body_id");
+const balance_button = document.getElementById("balance-button");
+const input_equation = document.getElementById("input-equation");
 
 // Define an array of colors to cycle through, first color is for the header, second color is for the body
 const colors = [
@@ -22,6 +24,8 @@ if (stored_index) {
 header.style.backgroundColor = colors[current_color_index][0];
 body.style.backgroundColor = colors[current_color_index][1];
 change_color_button_next_color.style.backgroundColor = colors[(current_color_index + 1) % colors.length][0];
+balance_button.style.backgroundColor = colors[current_color_index][0];
+input_equation.style.backgroundColor = colors[current_color_index][1];
 
 // Add a click event listener to the button
 change_color_button.addEventListener("click", () => {
@@ -35,4 +39,6 @@ change_color_button.addEventListener("click", () => {
     header.style.backgroundColor = colors[current_color_index][0];
     body.style.backgroundColor = colors[current_color_index][1];
     change_color_button_next_color.style.backgroundColor = colors[(current_color_index + 1) % colors.length][0];
+    balance_button.style.backgroundColor = colors[current_color_index][0];
+    input_equation.style.backgroundColor = colors[current_color_index][1];
 });

@@ -42,14 +42,19 @@
         <div class="input-content">
             <div class="equation-container">
                 <p class="equation" id="equation-1">
-                \[
-                10^{3+}[Cr(N_{2}H_{4}CO)_{6}]_{4}[Cr(CN)_{6}]_{3}+1176KMnO_{4}+1399H_{2}SO_{4} \longrightarrow 35K_{2}Cr_{2}O_{7}+1176MnSO_{4}+420CO_{2}+660KNO_{3}+223K_{2}SO_{4}+1879H_{2}O
-                \]
+                \[10^{3+}[Cr(N_{2}H_{4}CO)_{6}]_{4}[Cr(CN)_{6}]_{3}+1176KMnO_{4}+1399H_{2}SO_{4} \longrightarrow 35K_{2}Cr_{2}O_{7}+1176MnSO_{4}+420CO_{2}+660KNO_{3}+223K_{2}SO_{4}+1879H_{2}O\]
                 </p>
             </div>
-            <label for="input-equation"></label>
-            <input type="text" id="input-equation" placeholder="Equation to balance">
-	        <button onclick="greet()">Click me</button>
+            <hr class="horizontal-line">
+
+            <div class="input-text-container">
+                <label for="input-equation"></label>
+                <input type="text" id="input-equation" placeholder="Enter equation">
+	            <button id="balance-button" onclick="greet()">Balance</button>
+            </div>
+            <div class="input-buttons">
+
+            </div>
         </div>
     </div>
 
@@ -85,7 +90,7 @@
 	  await init();
 	  window.greet = greet;
     </script>
-
     <script type="text/javascript" src="js/change_color.js"></script>
+    <script type="text/javascript" src="js/show_input.js"></script>
 </body>
 </html>
