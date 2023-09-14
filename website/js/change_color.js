@@ -11,6 +11,7 @@ const eq2 = document.getElementById("equation-2");
 const input_label = document.getElementById("in-label");
 const output_label = document.getElementById("out-label");
 const info_label = document.getElementById("info-label");
+const lines = document.querySelectorAll(".horizontal-line, .vertical-line");
 
 // Define an array of colors to cycle through, first color is for the header, second color is for the body, third is for the text
 const colors = [
@@ -53,11 +54,17 @@ function set_colors() {
         input_equation.style.boxShadow = "0 0 10px 0 rgba(255, 255, 255, 0.5), inset 0 0 10px 0 rgba(255, 255, 255, 0.2)";
         info_label.style.color = "rgb(180, 180, 180)";
         info_label.style.backgroundColor = "rgba(155, 155, 155, 0.1)";
+        lines.forEach(line => {
+            line.style.backgroundColor = "rgba(155, 155, 155, 0.1)";
+        });
     } else {
         balance_button.style.boxShadow = "0 0 10px 0 rgba(0, 0, 0, 0.5)";
         input_equation.style.boxShadow = "0 0 10px 0 rgba(0, 0, 0, 0.5), inset 0 0 10px 0 rgba(0, 0, 0, 0.2)";
         info_label.style.color = "rgb(75, 75, 75)";
         info_label.style.backgroundColor = "rgba(100, 100, 100, 0.1)";
+        lines.forEach(line => {
+            line.style.backgroundColor = "rgba(100, 100, 100, 0.1)";
+        });
     }
 }
 
