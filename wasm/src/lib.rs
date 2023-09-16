@@ -1,15 +1,16 @@
 use wasm_bindgen::prelude::*;
+use stoichio::Equation;
 
-// Import the `window.alert` function from the Web.
+
+// Export a `equation_io` function from Rust to JavaScript.
 #[wasm_bindgen]
-extern "C" {
-    fn alert(s: &str);
-}
+/// Process input equation and return output
+pub fn equation_io(equation: &str) -> String {
+    let mut equation = Equation::from_latex(equation).unwrap();
 
-// Export a `greet` function from Rust to JavaScript, that alerts a
-// hello message.
-#[wasm_bindgen]
-pub fn greet() {
-    alert(&format!("Hello, world!"));
+    // first char is 1 if success, 0 if error
+    match equation.solve() {
+        Ok(_) => format!("1{}", equation.solution_str().unwrap()),
+        Err(err) => format!("0{}", err),
+    }
 }
-

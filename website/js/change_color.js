@@ -50,16 +50,16 @@ function set_colors() {
     input_equation.style.color = colors[current_color_index][2];
     
     if (colors[current_color_index][2] === "#ffffff") {
-        balance_button.style.boxShadow = "0 0 10px 0 rgba(255, 255, 255, 0.5)";
-        input_equation.style.boxShadow = "0 0 10px 0 rgba(255, 255, 255, 0.5), inset 0 0 10px 0 rgba(255, 255, 255, 0.2)";
+        balance_button.style.boxShadow = "0 0 max(10px, 1.64vh) 0 rgba(255, 255, 255, 0.5)";
+        input_equation.style.boxShadow = "0 0 max(10px, 1.64vh) 0 rgba(255, 255, 255, 0.5), inset 0 0 10px 0 rgba(255, 255, 255, 0.2)";
         info_label.style.color = "rgb(180, 180, 180)";
         info_label.style.backgroundColor = "rgba(155, 155, 155, 0.1)";
         lines.forEach(line => {
             line.style.backgroundColor = "rgba(155, 155, 155, 0.1)";
         });
     } else {
-        balance_button.style.boxShadow = "0 0 10px 0 rgba(0, 0, 0, 0.5)";
-        input_equation.style.boxShadow = "0 0 10px 0 rgba(0, 0, 0, 0.5), inset 0 0 10px 0 rgba(0, 0, 0, 0.2)";
+        balance_button.style.boxShadow = "0 0 max(10px, 1.64vh) 0 rgba(0, 0, 0, 0.5)";
+        input_equation.style.boxShadow = "0 0 max(10px, 1.64vh) 0 rgba(0, 0, 0, 0.5), inset 0 0 10px 0 rgba(0, 0, 0, 0.2)";
         info_label.style.color = "rgb(75, 75, 75)";
         info_label.style.backgroundColor = "rgba(100, 100, 100, 0.1)";
         lines.forEach(line => {
@@ -77,9 +77,9 @@ change_color_button.addEventListener("click", set_colors);
 input_equation.addEventListener("focus", function() {
     // Change the CSS property when the element gains focus
     if (colors[current_color_index][2] === "#ffffff") {
-        input_equation.style.boxShadow = "0 0 10px 0 rgba(255, 255, 255, 0.75), inset 0 0 10px 0 rgba(255, 255, 255, 0.3)";
+        input_equation.style.boxShadow = "0 0 max(10px, 1.64vh) 0 rgba(255, 255, 255, 0.75), inset 0 0 10px 0 rgba(255, 255, 255, 0.3)";
     } else {
-        input_equation.style.boxShadow = "0 0 10px 0 rgba(0, 0, 0, 0.75), inset 0 0 10px 0 rgba(0, 0, 0, 0.3)";
+        input_equation.style.boxShadow = "0 0 max(10px, 1.64vh) 0 rgba(0, 0, 0, 0.75), inset 0 0 10px 0 rgba(0, 0, 0, 0.3)";
     }
 });
 
@@ -87,9 +87,9 @@ input_equation.addEventListener("focus", function() {
 input_equation.addEventListener("blur", function() {
     // Reset the CSS property when the element loses focus
     if (colors[current_color_index][2] === "#ffffff") {
-        input_equation.style.boxShadow = "0 0 10px 0 rgba(255, 255, 255, 0.5), inset 0 0 10px 0 rgba(255, 255, 255, 0.2)";
+        input_equation.style.boxShadow = "0 0 max(10px, 1.64vh) 0 rgba(255, 255, 255, 0.5), inset 0 0 10px 0 rgba(255, 255, 255, 0.2)";
     } else {
-        input_equation.style.boxShadow = "0 0 10px 0 rgba(0, 0, 0, 0.5), inset 0 0 10px 0 rgba(0, 0, 0, 0.2)";
+        input_equation.style.boxShadow = "0 0 max(10px, 1.64vh) 0 rgba(0, 0, 0, 0.5), inset 0 0 10px 0 rgba(0, 0, 0, 0.2)";
     }
 });
 
@@ -98,33 +98,33 @@ input_equation.addEventListener("blur", function() {
 if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
     balance_button.addEventListener("mouseenter", function() {
         if (colors[current_color_index][2] === "#ffffff") {
-            balance_button.style.boxShadow = "0 0 10px 0 rgba(255, 255, 255, 0.9)";
+            balance_button.style.boxShadow = "0 0 max(10px, 1.64vh) 0 rgba(255, 255, 255, 0.9)";
         } else {
-            balance_button.style.boxShadow = "0 0 10px 0 rgba(0, 0, 0, 0.9)";
+            balance_button.style.boxShadow = "0 0 max(10px, 1.64vh) 0 rgba(0, 0, 0, 0.9)";
         }
     });
     
     balance_button.addEventListener("mouseleave", function() {
         if (colors[current_color_index][2] === "#ffffff") {
-            balance_button.style.boxShadow = "0 0 10px 0 rgba(255, 255, 255, 0.5)";
+            balance_button.style.boxShadow = "0 0 max(10px, 1.64vh) 0 rgba(255, 255, 255, 0.5)";
         } else {
-            balance_button.style.boxShadow = "0 0 10px 0 rgba(0, 0, 0, 0.5)";
+            balance_button.style.boxShadow = "0 0 max(10px, 1.64vh) 0 rgba(0, 0, 0, 0.5)";
         }
     });
 } else {
     balance_button.addEventListener("mousedown", function() {
         if (colors[current_color_index][2] === "#ffffff") {
-            balance_button.style.boxShadow = "0 0 10px 0 rgba(255, 255, 255, 0.9)";
+            balance_button.style.boxShadow = "0 0 max(10px, 1.64vh) 0 rgba(255, 255, 255, 0.9)";
         } else {
-            balance_button.style.boxShadow = "0 0 10px 0 rgba(0, 0, 0, 0.9)";
+            balance_button.style.boxShadow = "0 0 max(10px, 1.64vh) 0 rgba(0, 0, 0, 0.9)";
         }
     });
     
     balance_button.addEventListener("mouseup", function() {
         if (colors[current_color_index][2] === "#ffffff") {
-            balance_button.style.boxShadow = "0 0 10px 0 rgba(255, 255, 255, 0.5)";
+            balance_button.style.boxShadow = "0 0 max(10px, 1.64vh) 0 rgba(255, 255, 255, 0.5)";
         } else {
-            balance_button.style.boxShadow = "0 0 10px 0 rgba(0, 0, 0, 0.5)";
+            balance_button.style.boxShadow = "0 0 max(10px, 1.64vh) 0 rgba(0, 0, 0, 0.5)";
         }
     });
 }
