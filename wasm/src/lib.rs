@@ -6,7 +6,10 @@ use stoichio::Equation;
 #[wasm_bindgen]
 /// Process input equation and return output
 pub fn equation_io(equation: &str) -> String {
-    let mut equation = Equation::from_latex(equation).unwrap();
+    let mut equation = match Equation::from_latex(equation) {
+        Ok(equation) => equation,
+        Err(err) => return format!("0{}", err),
+    };
 
     // first char is 1 if success, 0 if error
     match equation.solve() {
