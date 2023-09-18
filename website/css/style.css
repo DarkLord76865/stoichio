@@ -58,6 +58,9 @@ header {
     color: #ffffff;
     font-family: cursive;
     font-size: max(30px, 5vh);
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
 }
 
 .github-button-anchor {
@@ -79,6 +82,9 @@ header {
     font-family: monospace;
     font-size: max(12px, 2vh);
     -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
 }
 @media(hover: hover) and (pointer: fine) {
     .github-button:hover {
@@ -106,6 +112,9 @@ header {
     font-family: cursive;
     font-size: max(13px, 2.15vh);
     white-space: nowrap;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
 }
 
 .horizontal-line {
@@ -146,6 +155,9 @@ header {
     font-family: cursive;
     font-size: max(13px, 2.15vh);
     white-space: nowrap;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
 }
 
 .input-content {
@@ -206,6 +218,9 @@ header {
     transition-property: box-shadow;
     transition-duration: 0.1s;
     -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
 }
 
 .input-buttons {
