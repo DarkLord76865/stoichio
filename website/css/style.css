@@ -31,6 +31,7 @@ header {
     transition-property: background-color;
     transition-duration: 0.1s;
     border-radius: 10%;
+    -webkit-tap-highlight-color: transparent;
 }
 @media(hover: hover) and (pointer: fine) {
     #change_color_button:hover {
@@ -77,6 +78,7 @@ header {
     cursor: pointer;
     font-family: monospace;
     font-size: max(12px, 2vh);
+    -webkit-tap-highlight-color: transparent;
 }
 @media(hover: hover) and (pointer: fine) {
     .github-button:hover {
@@ -203,6 +205,7 @@ header {
     box-shadow: 0 0 max(10px, 1.64vh) 0 rgba(0, 0, 0, 0.5);
     transition-property: box-shadow;
     transition-duration: 0.1s;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .input-buttons {
