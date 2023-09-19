@@ -96,6 +96,7 @@ input_equation.addEventListener("blur", function() {
 
 // Check if the media query condition is met
 if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+    balance_button.style.transitionDuration = "0.1s";
     balance_button.addEventListener("mouseenter", function() {
         if (colors[current_color_index][2] === "#ffffff") {
             balance_button.style.boxShadow = "0 0 max(10px, 1.64vh) 0 rgba(255, 255, 255, 0.9)";
@@ -112,6 +113,7 @@ if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
         }
     });
 } else {
+    balance_button.style.transitionDuration = "0s";
     balance_button.addEventListener("touchstart", function() {
         if (colors[current_color_index][2] === "#ffffff") {
             balance_button.style.boxShadow = "0 0 max(10px, 1.64vh) 0 rgba(255, 255, 255, 0.9)";
