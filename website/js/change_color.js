@@ -112,7 +112,7 @@ if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
         }
     });
 } else {
-    balance_button.addEventListener("mousedown", function() {
+    balance_button.addEventListener("touchstart", function() {
         if (colors[current_color_index][2] === "#ffffff") {
             balance_button.style.boxShadow = "0 0 max(10px, 1.64vh) 0 rgba(255, 255, 255, 0.9)";
         } else {
@@ -120,7 +120,7 @@ if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
         }
     });
     
-    balance_button.addEventListener("mouseup", function() {
+    balance_button.addEventListener("touchend", function() {
         if (colors[current_color_index][2] === "#ffffff") {
             balance_button.style.boxShadow = "0 0 max(10px, 1.64vh) 0 rgba(255, 255, 255, 0.5)";
         } else {
