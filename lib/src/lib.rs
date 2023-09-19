@@ -13,6 +13,37 @@ use std::mem;
 
 
 
+/// Horizontal arrows in LaTeX
+pub const LATEX_ARROWS: [&str; 23] = [
+    r"\leftarrow",
+    r"\rightarrow",
+    r"\longleftarrow",
+    r"\longrightarrow",
+    r"\Leftarrow",
+    r"\Rightarrow",
+    r"\Longleftarrow",
+    r"\Longrightarrow",
+    r"\leftrightarrow",
+    r"\longleftrightarrow",
+    r"\Leftrightarrow",
+    r"\Longleftrightarrow",
+    r"\leftrightarrows",
+    r"\leftharpoonup",
+    r"\leftharpoondown",
+    r"\rightharpoonup",
+    r"\rightharpoondown",
+    r"\leftrightharpoons",
+    r"\rightleftharpoons",
+    r"\hookleftarrow",
+    r"\hookrightarrow",
+    r"\mapsto",
+    r"\longmapsto",
+];
+
+
+
+
+
 /// Errors that can occur during solving system of linear equations
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
 pub enum StoichioError {
@@ -22,6 +53,10 @@ pub enum StoichioError {
     InvalidSolution,
     /// Entered element is invalid
     InvalidElement,
+    /// There should be exactly one arrow in the equation
+    InvalidArrowCount,
+    /// Entered reaction environment is invalid
+    InvalidEnvironment,
 
     /// Matrix has wrong dimensions (rows and columns)
     WrongMatrixDimensions,
@@ -36,10 +71,23 @@ impl Display for StoichioError {
             StoichioError::InvalidElement => write!(f, "Invalid element"),
             StoichioError::InvalidEquation => write!(f, "Invalid equation"),
             StoichioError::InvalidSolution => write!(f, "Invalid solution"),
+            StoichioError::InvalidArrowCount => write!(f, "There should be exactly one arrow in the equation"),
+            StoichioError::InvalidEnvironment => write!(f, "Entered reaction environment is invalid"),
         }
     }
 }
 impl Error for StoichioError {}
+
+/// Stores the information about the environment in which the reaction is happening
+#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
+pub enum EnvironmentType {
+    /// Acidic environment
+    Acidic,
+    /// Basic environment
+    Basic,
+    /// Neutral environment
+    Neutral
+}
 
 
 
@@ -50,6 +98,12 @@ impl Error for StoichioError {}
 pub struct Equation {
     /// String from which the equation was parsed
     original_str: String,
+    /// Arrow type used in the equation
+    arrow_type: String,
+    /// Environment in which the reaction is happening
+    environment_type: EnvironmentType,
+    /// Stores whether the equation is a half-reaction (the electrons are included in the equation)
+    half_reaction: bool,
     /// A vector of reactants
     reactants: Vec<Compound>,
     /// A vector of products
@@ -61,6 +115,10 @@ pub struct Equation {
 }
 impl Equation {
     /// Create new equation from LaTeX string
+    /// The equation should contain exactly one arrow
+    /// If you need to specify in which environment the reaction is happening, add (acid.) for acidic environment and (base.) for basic environment to the end of equation
+    /// If you want to have electrons in the equation (for half-reactions), use e^- somewhere in the equation
+    /// Note that electrons should not be used in the equation if it is not a half-reaction, so if you specify environment, you should not use electrons
     /// # Arguments
     /// * `input` - LaTeX string
     /// # Returns
@@ -84,12 +142,39 @@ impl Equation {
     /// assert_eq!(equation.products(), &expected_products);
     /// ```
     pub fn from_latex(input: &str) -> Result<Self, StoichioError> {
+        // store original string
         let original_str = input;
-        if input.split(r"\longrightarrow").count() != 2 { return Err(StoichioError::InvalidEquation); }
-        let reactants_str = input.split(r"\longrightarrow").next().unwrap();
-        let products_str = input.split(r"\longrightarrow").last().unwrap();
 
-        let sanitize_equation = |string: &str| -> String {
+        // get input as String
+        let input = input.to_string();
+
+        // check input for arrows
+        let mut latex_arrow_counts: [usize; 23] = [0; 23];
+        for (i, arrow_type) in LATEX_ARROWS.iter().enumerate() {
+            latex_arrow_counts[i] += input.split(arrow_type).count() - 1;
+        }
+        latex_arrow_counts[8] -= latex_arrow_counts[12];  // at this point, latex_arrow_counts[12] is the number of \leftrightarrows, we need to subtract it from the number of \leftrightarrow since it is a subset of \leftrightarrow
+        if latex_arrow_counts.iter().sum::<usize>() != 1 { return Err(StoichioError::InvalidArrowCount); }
+        let arrow_type = LATEX_ARROWS[latex_arrow_counts.iter().position(|&x| x == 1).unwrap()];
+
+        // check input for environment (acidic or basic)
+        let base = input.contains("(base.)");
+        let acid = input.contains("(acid.)");
+        if base && acid { return Err(StoichioError::InvalidEnvironment); }
+        let environment_type = if base { EnvironmentType::Basic } else if acid { EnvironmentType::Acidic } else { EnvironmentType::Neutral };
+        let input = input.replace("(base.)", "");
+        let input = input.replace("(acid.)", "");
+
+        // split input string into reactants and products
+        let reactants_str = input.split(arrow_type).next().unwrap();
+        let products_str = input.split(arrow_type).last().unwrap();
+
+        // flag that stores whether the equation is a half-reaction (the electrons are included in the equation)
+        // it is set to true if electrons are detected in the equation
+        let mut half_reaction = false;
+
+        // cleans up one side of the equation
+        let sanitize_side = |string: &str| -> String {
 
             // remove any unused character
             let string = string.chars().filter(|&c| {
@@ -118,7 +203,8 @@ impl Equation {
             string
         };
 
-        let process_side = |string: &str| -> Result<Vec<Compound>, StoichioError> {
+        // processes one side of the equation
+        let mut process_side = |string: &str| -> Result<Vec<Compound>, StoichioError> {
             let mut compounds = Vec::new();
 
             let mut plus_locs = Vec::new();
@@ -147,17 +233,23 @@ impl Equation {
 
                 if !compound_str.starts_with('e') {  // if it does start with e, it is an electron, we will add it later after calculations
                     compounds.push(Compound::from_latex(&compound_str)?);
+                } else {
+                    half_reaction = true;
                 }
             }
 
             Ok(compounds)
         };
 
-        let reactants = process_side(&sanitize_equation(reactants_str))?;
-        let products = process_side(&sanitize_equation(products_str))?;
+        // get vectors of reactants and products
+        let reactants = process_side(&sanitize_side(reactants_str))?;
+        let products = process_side(&sanitize_side(products_str))?;
 
         Ok(Self {
             original_str: String::from(original_str),
+            arrow_type: String::from(arrow_type),
+            environment_type,
+            half_reaction,
             reactants,
             products,
             solutions_reactants: None,
@@ -264,6 +356,52 @@ impl Equation {
     /// ```
     pub fn original_str(&self) -> &str {
         &self.original_str
+    }
+
+    /// Returns the arrow type used in the equation
+    /// # Returns
+    /// * `&str` - arrow type
+    /// # Example
+    /// ```
+    /// use stoichio::Equation;
+    /// use stoichio::LATEX_ARROWS;
+    ///
+    /// let equation_str = r"H_2 + O_2 \longrightarrow H_2O";
+    /// let equation = Equation::from_latex(equation_str).unwrap();
+    ///
+    /// let arrow_type = equation.arrow_type();
+    ///
+    /// assert_eq!(arrow_type, r"\longrightarrow");
+    /// assert!(LATEX_ARROWS.contains(&arrow_type));
+    /// ```
+    pub fn arrow_type(&self) -> &str {
+        &self.arrow_type
+    }
+
+    /// Returns the environment in which the reaction is happening
+    /// # Returns
+    /// * `EnvironmentType` - environment in which the reaction is happening
+    /// # Example
+    /// ```
+    /// use stoichio::{Equation, EnvironmentType};
+    ///
+    /// let equation_str = r"H_2 + O_2 \longrightarrow H_2O (acid.)";
+    /// let equation = Equation::from_latex(equation_str).unwrap();
+    ///
+    /// assert_eq!(equation.environment_type(), EnvironmentType::Acidic);
+    ///
+    /// let equation_str = r"H_2 + O_2 \longrightarrow H_2O (base.)";
+    /// let equation = Equation::from_latex(equation_str).unwrap();
+    ///
+    /// assert_eq!(equation.environment_type(), EnvironmentType::Basic);
+    ///
+    /// let equation_str = r"H_2 + O_2 \longrightarrow H_2O";
+    /// let equation = Equation::from_latex(equation_str).unwrap();
+    ///
+    /// assert_eq!(equation.environment_type(), EnvironmentType::Neutral);
+    /// ```
+    pub fn environment_type(&self) -> EnvironmentType {
+        self.environment_type
     }
 
     /// Returns the vector of reactants
@@ -390,7 +528,7 @@ impl Equation {
             products_str.push_str(&format!(" + {}e^{{-}}", if sols_prods[sols_prods.len() - 1] > 1 { sols_prods[sols_prods.len() - 1].to_string() } else { "".to_string() }));
         }
 
-        Some(format!("{} \\longrightarrow {}", reactants_str, products_str))
+        Some(format!("{} {} {}", reactants_str, self.arrow_type, products_str))
     }
 }
 
@@ -1023,6 +1161,9 @@ pub fn reduce_row_echelon(matrix: &mut [Vec<Rational>], n: usize) {
 }
 
 
+
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1035,6 +1176,18 @@ mod tests {
         assert_eq!(solution, solved_equation);
     }
 
+
+    #[test]
+    fn arrow_types_latex() {
+        for arrow in LATEX_ARROWS {
+            let eq_str = format!("H_2 + O_2 {} H_2O", arrow);
+            let mut eq = Equation::from_latex(&eq_str).unwrap();
+            eq.solve().unwrap();
+
+            assert_eq!(eq.arrow_type(), arrow);
+            assert_eq!(eq.solution_str().unwrap(), format!("2H_2 + O_2 {} 2H_2O", arrow));
+        }
+    }
 
     #[test]
     fn eq1() {
