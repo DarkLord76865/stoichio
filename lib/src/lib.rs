@@ -57,6 +57,8 @@ pub enum StoichioError {
     InvalidArrowCount,
     /// Entered reaction environment is invalid
     InvalidEnvironment,
+    /// There is a negative coefficient in the solution
+    NegativeCoefficient,
 
     /// Matrix has wrong dimensions (rows and columns)
     WrongMatrixDimensions,
@@ -73,6 +75,7 @@ impl Display for StoichioError {
             StoichioError::InvalidSolution => write!(f, "Invalid solution"),
             StoichioError::InvalidArrowCount => write!(f, "There should be exactly one arrow in the equation"),
             StoichioError::InvalidEnvironment => write!(f, "Entered reaction environment is invalid"),
+            StoichioError::NegativeCoefficient => write!(f, "There is a negative coefficient in the solution"),
         }
     }
 }
@@ -103,7 +106,7 @@ pub struct Equation {
     /// Environment in which the reaction is happening
     environment_type: EnvironmentType,
     /// Stores whether the equation is a half-reaction (the electrons are included in the equation)
-    half_reaction: bool,
+    explicit_electrons: bool,
     /// A vector of reactants
     reactants: Vec<Compound>,
     /// A vector of products
@@ -117,8 +120,7 @@ impl Equation {
     /// Create new equation from LaTeX string
     /// The equation should contain exactly one arrow
     /// If you need to specify in which environment the reaction is happening, add (acid.) for acidic environment and (base.) for basic environment to the end of equation
-    /// If you want to have electrons in the equation (for half-reactions), use e^- somewhere in the equation
-    /// Note that electrons should not be used in the equation if it is not a half-reaction, so if you specify environment, you should not use electrons
+    /// If you want to have electrons explicitly in the equation (for half-reactions), use e^- somewhere in the equation
     /// # Arguments
     /// * `input` - LaTeX string
     /// # Returns
@@ -171,11 +173,10 @@ impl Equation {
 
         // flag that stores whether the equation is a half-reaction (the electrons are included in the equation)
         // it is set to true if electrons are detected in the equation
-        let mut half_reaction = false;
+        let mut explicit_electrons = false;
 
         // cleans up one side of the equation
         let sanitize_side = |string: &str| -> String {
-
             // remove any unused character
             let string = string.chars().filter(|&c| {
                 c.is_ascii_lowercase() ||
@@ -234,7 +235,7 @@ impl Equation {
                 if !compound_str.starts_with('e') {  // if it does start with e, it is an electron, we will add it later after calculations
                     compounds.push(Compound::from_latex(&compound_str)?);
                 } else {
-                    half_reaction = true;
+                    explicit_electrons = true;
                 }
             }
 
@@ -249,7 +250,7 @@ impl Equation {
             original_str: String::from(original_str),
             arrow_type: String::from(arrow_type),
             environment_type,
-            half_reaction,
+            explicit_electrons,
             reactants,
             products,
             solutions_reactants: None,
@@ -262,7 +263,48 @@ impl Equation {
     /// * `Ok` - if the equation was solved successfully
     /// * `Err` - if the equation was not solved successfully
     pub fn solve(&mut self) -> Result<(), StoichioError> {
-        // get all the elements used in the equation (each element corresponds to one equation) (number of rows)
+        // check if H+ or OH- are present in the equation
+        let mut h_plus = false;
+        let mut h2o = false;
+        let mut oh_minus = false;
+        for compound in self.reactants.iter().chain(self.products.iter()) {
+            match compound.original_str() {
+                "H^+" | "H^{+}" | "H^1" | "H^{1}" | "H^{1+}" => h_plus = true,
+                "H_2O" | "H_{2}O" => h2o = true,
+                "OH^-" | "OH^{-}" | "OH^{1-}" => oh_minus = true,
+                _ => {},
+            }
+        }
+
+        // add H+ / H2O / OH- to the equation if needed
+        let mut added_h_plus = false;
+        let mut added_h2o = false;
+        let mut added_oh_minus = false;
+        match self.environment_type {
+            EnvironmentType::Acidic => {
+                if !h_plus {
+                    added_h_plus = true;
+                    self.reactants.push(Compound::from_latex("H^+").unwrap());
+                }
+                if !h2o {
+                    added_h2o = true;
+                    self.reactants.push(Compound::from_latex("H_2O").unwrap());
+                }
+            },
+            EnvironmentType::Basic => {
+                if !oh_minus {
+                    added_oh_minus = true;
+                    self.reactants.push(Compound::from_latex("OH^-").unwrap());
+                }
+                if !h2o {
+                    added_h2o = true;
+                    self.reactants.push(Compound::from_latex("H_2O").unwrap());
+                }
+            },
+            EnvironmentType::Neutral => {},
+        }
+
+        // get all the elements used in the equation (each element corresponds to one equation)
         let mut elements = HashSet::new();
         for compound in self.reactants.iter().chain(self.products.iter()) {
             for (element, _) in compound.elements.iter() {
@@ -270,7 +312,7 @@ impl Equation {
             }
         }
 
-        // number of coefficients in the matrix (number of columns)
+        // number of coefficients in the matrix (number of columns) (number of elements + 1, because last column stores solutions)
         let coeff_count = self.reactants.len() + self.products.len() + 1;
 
         // construct matrix of coefficients
@@ -303,12 +345,51 @@ impl Equation {
             }
         }
 
-        let solutions = solve_equations(&matrix)?;
-        if solutions.iter().any(|x| *x <= 0) { return Err(StoichioError::InvalidSolution); }
+        // if electrons aren't to be explicitly included in the equation, we need to add another equation that ensures they will be balanced
+        if !self.explicit_electrons {
+            let mut electron_coeffs = vec![0; coeff_count];
+            let mut col = 0;
+            for compound in self.reactants.iter() {
+                if compound.electrons() != 0 {
+                    electron_coeffs[col] = compound.electrons();
+                }
+                col += 1;
+            }
+            for compound in self.products.iter() {
+                if compound.electrons() != 0 {
+                    electron_coeffs[col] = -compound.electrons();
+                }
+                col += 1;
+            }
+            matrix.push(electron_coeffs);
+        }
 
+        // get system solutions
+        let solutions = solve_equations(&matrix)?;
         let (reactants_solutions, products_solutions) = solutions.split_at(self.reactants.len());
         let mut reactants_solutions = reactants_solutions.to_vec();
         let mut products_solutions = products_solutions.to_vec();
+
+        // if added H+ / H2O / OH- have coefficient less than 0, we need to add them to the other side of the equation
+        let mut deleted = 0;
+        for i in (reactants_solutions.len() - [added_h_plus, added_h2o, added_oh_minus].iter().filter(|&&x| x).count())..reactants_solutions.len() {
+            if reactants_solutions[i - deleted] <= 0 {
+                let switching_solution = reactants_solutions.remove(i - deleted);
+                let switching_compound = self.reactants.remove(i - deleted);
+
+                if switching_solution != 0 {
+                    products_solutions.push(-switching_solution);
+                    self.products.push(switching_compound);
+                }
+
+                deleted += 1;
+            }
+        }
+
+        // if any of the coefficients is negative or zero now, the inputted equation is not valid
+        if reactants_solutions.iter().any(|x| *x <= 0) || products_solutions.iter().any(|x| *x <= 0) {
+            return Err(StoichioError::InvalidSolution);
+        }
 
         // check if solutions are correct
         let mut reactants_element_counts = HashMap::new();
@@ -330,6 +411,9 @@ impl Equation {
         if reactants_element_counts != products_element_counts { return Err(StoichioError::InvalidSolution); }
 
         // check if electrons are balanced
+        if reactants_electrons != products_electrons && !self.explicit_electrons {
+            return Err(StoichioError::InvalidSolution);
+        }
         match reactants_electrons.cmp(&products_electrons) {
             Ordering::Less => { reactants_solutions.push(products_electrons - reactants_electrons) },
             Ordering::Greater => { products_solutions.push(reactants_electrons - products_electrons) },
@@ -354,6 +438,7 @@ impl Equation {
     ///
     /// assert_eq!(equation.original_str(), equation_str);
     /// ```
+    #[inline(always)]
     pub fn original_str(&self) -> &str {
         &self.original_str
     }
@@ -374,6 +459,7 @@ impl Equation {
     /// assert_eq!(arrow_type, r"\longrightarrow");
     /// assert!(LATEX_ARROWS.contains(&arrow_type));
     /// ```
+    #[inline(always)]
     pub fn arrow_type(&self) -> &str {
         &self.arrow_type
     }
@@ -400,8 +486,31 @@ impl Equation {
     ///
     /// assert_eq!(equation.environment_type(), EnvironmentType::Neutral);
     /// ```
+    #[inline(always)]
     pub fn environment_type(&self) -> EnvironmentType {
         self.environment_type
+    }
+
+    /// Returns whether the electrons appear explicitly in the equation
+    /// # Returns
+    /// * `bool` - whether the electrons appear explicitly in the equation
+    /// # Example
+    /// ```
+    /// use stoichio::Equation;
+    ///
+    /// let equation_str = r"H_2 + O_2 \longrightarrow H_2O";
+    /// let equation = Equation::from_latex(equation_str).unwrap();
+    ///
+    /// assert!(!equation.explicit_electrons());
+    ///
+    /// let equation_str = r"K \longrightarrow K^+ + e^-";
+    /// let equation = Equation::from_latex(equation_str).unwrap();
+    ///
+    /// assert!(equation.explicit_electrons());
+    /// ```
+    #[inline(always)]
+    pub fn explicit_electrons(&self) -> bool {
+        self.explicit_electrons
     }
 
     /// Returns the vector of reactants
@@ -421,6 +530,7 @@ impl Equation {
     ///
     /// assert_eq!(equation.reactants(), &expected);
     /// ```
+    #[inline(always)]
     pub fn reactants(&self) -> &Vec<Compound> {
         &self.reactants
     }
@@ -439,12 +549,13 @@ impl Equation {
     ///
     /// assert_eq!(equation.products(), &expected);
     /// ```
+    #[inline(always)]
     pub fn products(&self) -> &Vec<Compound> {
         &self.products
     }
 
     /// Returns the vector of solutions for reactants (stoichiometric coefficients)
-    /// It might include extra solution (stoichiometric coefficient for electrons if needed)
+    /// It might include extra solutions (stoichiometric coefficient for H+ / H2O / OH- and stoichiometric coefficient for electrons if needed)
     /// # Returns
     /// * `Option<&Vec<i64>>` - vector of solutions for reactants
     /// # Example
@@ -457,12 +568,14 @@ impl Equation {
     ///
     /// let solutions = equation.solution_reactants().unwrap();
     /// assert_eq!(solutions, &[2, 1]);
+    /// ```
+    #[inline(always)]
     pub fn solution_reactants(&self) -> Option<&Vec<i64>> {
         self.solutions_reactants.as_ref()
     }
 
     /// Returns the vector of solutions for products (stoichiometric coefficients)
-    /// It might include extra solution (stoichiometric coefficient for electrons if needed)
+    /// It might include extra solution (stoichiometric coefficient for H+ / H2O / OH- and stoichiometric coefficient for electrons if needed)
     /// # Returns
     /// * `Option<&Vec<i64>>` - vector of solutions for products
     /// # Example
@@ -476,6 +589,7 @@ impl Equation {
     /// let solutions = equation.solution_products().unwrap();
     /// assert_eq!(solutions, &[2]);
     /// ```
+    #[inline(always)]
     pub fn solution_products(&self) -> Option<&Vec<i64>> {
         self.solutions_products.as_ref()
     }
@@ -862,6 +976,7 @@ impl Compound {
     ///
     /// assert_eq!(compound.original_str(), compound_str);
     /// ```
+    #[inline(always)]
     pub fn original_str(&self) -> &str {
         &self.original_str
     }
@@ -882,6 +997,7 @@ impl Compound {
     /// let expected = HashMap::from([(Element::H, 2), (Element::O, 1)]);
     /// assert_eq!(compound.elements(), &expected);
     /// ```
+    #[inline(always)]
     pub fn elements(&self) -> &HashMap<Element, i64> {
         &self.elements
     }
@@ -900,6 +1016,7 @@ impl Compound {
     ///
     /// assert_eq!(compound.electrons(), 50);
     /// ```
+    #[inline(always)]
     pub fn electrons(&self) -> i64 {
         self.elements.iter().map(|(e, q)| i64::from(e.atomic_number()) * q).sum::<i64>() - self.electron_offset
     }
@@ -917,6 +1034,7 @@ impl Compound {
     ///
     /// assert_eq!(compound.electron_offset(), 1);
     /// ```
+    #[inline(always)]
     pub fn electron_offset(&self) -> i64 {
         self.electron_offset
     }
@@ -1196,7 +1314,7 @@ mod tests {
 
     #[test]
     fn eq2() {
-        test_equation(r"K \longrightarrow K^+", r"K \longrightarrow K^+ + e^{-}");
+        test_equation(r"K \longrightarrow K^+ + e^-", r"K \longrightarrow K^+ + e^{-}");
     }
 
     #[test]
@@ -1438,4 +1556,71 @@ mod tests {
     fn eq50() {
         test_equation(r"KNO_3 + C_{12}H_{22}O_{11} \longrightarrow N_2 + CO_2 + H_2O + K_2CO_3", r"48KNO_3 + 5C_{12}H_{22}O_{11} \longrightarrow 24N_2 + 36CO_2 + 55H_2O + 24K_2CO_3");
     }
+
+    #[test]
+    fn eq51() {
+        test_equation(r"Na \rightarrow Na^{2+} + e^-", r"Na \rightarrow Na^{2+} + 2e^{-}");
+    }
+
+    #[test]
+    fn eq52() {
+        test_equation(r"MnO_4^- + CH_3OH \longrightarrow Mn^{2+} + HCO_2H (acid.)", r"4MnO_4^- + 5CH_3OH + 12H^+ \longrightarrow 4Mn^{2+} + 5HCO_2H + 11H_2O");
+    }
+
+    #[test]
+    fn eq53() {
+        // this is first half-reaction from eq52
+        test_equation(r"MnO_4^- \longrightarrow Mn^{2+} + e^- (acid.)", r"MnO_4^- + 8H^+ + 5e^{-} \longrightarrow Mn^{2+} + 4H_2O");
+    }
+
+    #[test]
+    fn eq54() {
+        // this is second half-reaction from eq52
+        test_equation(r"CH_3OH \longrightarrow HCO_2H + e^- (acid.)", r"CH_3OH + H_2O \longrightarrow HCO_2H + 4H^+ + 4e^{-}");
+    }
+
+    #[test]
+    fn eq55() {
+        // this is eq55 without acidic environment setting
+        test_equation(r"H^+ + MnO_4^- + CH_3OH \longrightarrow Mn^{2+} + H_2O + HCO_2H", r"12H^+ + 4MnO_4^- + 5CH_3OH \longrightarrow 4Mn^{2+} + 11H_2O + 5HCO_2H");
+    }
+
+    #[test]
+    fn eq56() {
+        test_equation(r"Ag + Zn^{2+} \longrightarrow Ag_2O + Zn (base.)", r"2Ag + Zn^{2+} + 2OH^- \longrightarrow Ag_2O + Zn + H_2O");
+    }
+
+    #[test]
+    fn eq57() {
+        test_equation(r"NH_3 + NO_2 \longrightarrow N_2O + H_2O", r"6NH_3 + 8NO_2 \longrightarrow 7N_2O + 9H_2O");
+    }
+
+    #[test]
+    fn eq58() {
+        test_equation(r"As_2O_3 + NO_3^- \longrightarrow H_3AsO_4 + N_2O_3 (acid.)", r"As_2O_3 + 2NO_3^- + 2H^+ + 2H_2O \longrightarrow 2H_3AsO_4 + N_2O_3");
+    }
+
+    #[test]
+    fn eq59() {
+        test_equation(r"Cl_2 + Fe^{2+} \longrightarrow Fe^{3+} + Cl^-", r"Cl_2 + 2Fe^{2+} \longrightarrow 2Fe^{3+} + 2Cl^-");
+    }
+
+    #[test]
+    fn eq60() {
+        test_equation(r"CH_3CH_2OH + Cr_2O_7^{2-} \longrightarrow CH_3COOH + Cr^{3+} (acid.)", r"3CH_3CH_2OH + 2Cr_2O_7^{2-} + 16H^+ \longrightarrow 3CH_3COOH + 4Cr^{3+} + 11H_2O");
+    }
+
+    #[test]
+    fn eq61() {
+        test_equation(r"Fe(OH)_2 + O_2 \longrightarrow Fe(OH)_3 (base.)", r"4Fe(OH)_2 + O_2 + 2H_2O \longrightarrow 4Fe(OH)_3");
+    }
+
+    #[test]
+    fn eq62() {
+        test_equation(r"MnO_4^- + OH^- \longrightarrow MnO_4^{2-} + O_2 (base.)", r"4MnO_4^- + 4OH^- \longrightarrow 4MnO_4^{2-} + O_2 + 2H_2O");
+    }
 }
+// test_equation(r"Cr(OH)_6^{3-} + H_2O_2 \longrightarrow CrO_4^{2-}", "");
+// test_equation(r"Co(NH_3)_6^{2+} + H_2O_2 \longrightarrow Co(NH_3)_6^{3+}", "");
+// test_equation(r"MnO_4^- + H_2O_2 \longrightarrow Mn^{2+} + O_2 + H_2O (acid.)");
+// test_equation(r"H_2O_2 + Cl_2O_7 \longrightarrow ClO_2^- + O_2 (base.)", r"4H_2O_2 + Cl_2O_7 + 2OH^- \longrightarrow 2ClO_2^- + 4O_2 + 5H_2O");
